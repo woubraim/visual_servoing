@@ -1,6 +1,10 @@
 cmake_minimum_required(VERSION 3.8)
 project(visual_servoing)
 
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
@@ -31,6 +35,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
 
 add_executable(visual_servoing_node
   src/visual_servoing_node.cpp
+  src/visual_servoing_display.cpp
 )
 
 target_include_directories(visual_servoing_node PUBLIC
