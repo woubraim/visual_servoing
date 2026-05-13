@@ -40,8 +40,8 @@
 #include "visual_servoing/camera_config.hpp"
 #include "visual_servoing/visual_servoing_display.hpp"
 #include "visual_servoing/pose_transformer.hpp"
+#include "visual_servoing/detected_goal_builder.hpp"
 
-#include "visual_servoing/msg/detected_goal.hpp"
 #include "visual_servoing/msg/detected_goal_array.hpp"
 #include "visual_servoing/srv/save_current_tag_goal.hpp"
 
@@ -533,7 +533,10 @@ private:
 
         resetVisibleTags();
 
-        auto detected_goals_msg = createDetectedGoalArrayMessage();
+        auto detected_goals_msg = DetectedGoalBuilder::createMessage(
+            this->now(),
+            target_frame_
+        );
 
         processDetections(
             detected_tags,
@@ -582,21 +585,6 @@ private:
 
             return false;
         }
-    }
-
-    /**
-     * @brief Creates the outgoing detected-goals message.
-     *
-     * By default, the message frame is target_frame_. If TF is unavailable and
-     * fallback camera-frame poses are published, the frame is updated later.
-     */
-    visual_servoing::msg::DetectedGoalArray createDetectedGoalArrayMessage()
-    {
-        visual_servoing::msg::DetectedGoalArray message;
-        message.header.stamp = this->now();
-        message.header.frame_id = target_frame_;
-
-        return message;
     }
 
     /**
@@ -653,7 +641,7 @@ private:
 
         if (pose_transformer_->transformToTargetFrame(tag_pose_camera_stamped, tag_pose_target))
         {
-            addDetectedGoal(
+            DetectedGoalBuilder::addGoal(
                 detected_goals_msg,
                 detected_tag.id,
                 tag_pose_target.pose,
@@ -664,7 +652,7 @@ private:
             return;
         }
 
-        addDetectedGoal(
+        DetectedGoalBuilder::addGoal(
             detected_goals_msg,
             detected_tag.id,
             detected_tag.pose_camera,
@@ -672,29 +660,6 @@ private:
         );
 
         addVisibleTag(detected_tag.id);
-    }
-
-    /**
-     * @brief Adds one detected tag pose to the outgoing message.
-     *
-     * @note DetectedGoalArray currently stores one shared header.frame_id.
-     * Therefore, all poses in the message are expected to share the same frame.
-     * If mixed frames are needed later, DetectedGoal.msg should include its own
-     * frame_id per goal.
-     */
-    void addDetectedGoal(
-        visual_servoing::msg::DetectedGoalArray &detected_goals_msg,
-        int tag_id,
-        const geometry_msgs::msg::Pose &pose,
-        const std::string &frame_id
-    )
-    {
-        visual_servoing::msg::DetectedGoal detected_goal;
-        detected_goal.id = tag_id;
-        detected_goal.pose = pose;
-
-        detected_goals_msg.header.frame_id = frame_id;
-        detected_goals_msg.goals.push_back(detected_goal);
     }
 
     /**
