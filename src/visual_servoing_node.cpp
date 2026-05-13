@@ -23,12 +23,10 @@
 
 #include <geometry_msgs/msg/pose.hpp>
 #include <geometry_msgs/msg/pose_stamped.hpp>
-#include <geometry_msgs/msg/transform_stamped.hpp>
 
 #include <cv_bridge/cv_bridge.h>
 #include <opencv2/opencv.hpp>
 
-#include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 #include <tf2_ros/buffer.h>
 #include <tf2_ros/transform_listener.h>
 
@@ -41,6 +39,7 @@
 #include "visual_servoing/apriltag_pose_estimator.hpp"
 #include "visual_servoing/camera_config.hpp"
 #include "visual_servoing/visual_servoing_display.hpp"
+#include "visual_servoing/pose_transformer.hpp"
 
 #include "visual_servoing/msg/detected_goal.hpp"
 #include "visual_servoing/msg/detected_goal_array.hpp"
@@ -72,11 +71,12 @@ public:
      * the estimator needs the configured tag size.
      */
     VisualServoingNode()
-        : Node("visual_servoing_node")
+    : Node("visual_servoing_node")
     {
         loadParameters();
         initializeAprilTagEstimator();
         initializeTf();
+        initializePoseTransformer();
         configureCamera();
         logConfiguration();
         initializeRosInterfaces();
@@ -128,6 +128,9 @@ private:
     // -------------------------------------------------------------------------
     // Processing helpers
     // -------------------------------------------------------------------------
+
+    /// Handles TF pose transformation into the configured target frame.
+    std::unique_ptr<PoseTransformer> pose_transformer_;
 
     /// Handles AprilTag detection and camera-frame pose estimation.
     std::unique_ptr<AprilTagPoseEstimator> tag_pose_estimator_;
@@ -202,6 +205,19 @@ private:
     {
         tf_buffer_ = std::make_shared<tf2_ros::Buffer>(this->get_clock());
         tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
+    }
+
+    /**
+    * @brief Creates the helper responsible for TF pose transformations.
+    */
+    void initializePoseTransformer()
+    {
+        pose_transformer_ = std::make_unique<PoseTransformer>(
+            tf_buffer_,
+            this->get_logger(),
+            this->get_clock(),
+            target_frame_
+        );
     }
 
     /**
@@ -635,7 +651,7 @@ private:
 
         geometry_msgs::msg::PoseStamped tag_pose_target;
 
-        if (transformPoseToTarget(tag_pose_camera_stamped, tag_pose_target))
+        if (pose_transformer_->transformToTargetFrame(tag_pose_camera_stamped, tag_pose_target))
         {
             addDetectedGoal(
                 detected_goals_msg,
@@ -656,44 +672,6 @@ private:
         );
 
         addVisibleTag(detected_tag.id);
-    }
-
-    /**
-     * @brief Attempts to transform a pose from its input frame to target_frame_.
-     *
-     * @return true if the TF lookup and transform succeed, false otherwise.
-     */
-    bool transformPoseToTarget(
-        const geometry_msgs::msg::PoseStamped &input_pose,
-        geometry_msgs::msg::PoseStamped &output_pose
-    )
-    {
-        try
-        {
-            const geometry_msgs::msg::TransformStamped transform_stamped =
-                tf_buffer_->lookupTransform(
-                    target_frame_,
-                    input_pose.header.frame_id,
-                    tf2::TimePointZero
-                );
-
-            tf2::doTransform(input_pose, output_pose, transform_stamped);
-            return true;
-        }
-        catch (const tf2::TransformException &ex)
-        {
-            RCLCPP_WARN_THROTTLE(
-                this->get_logger(),
-                *this->get_clock(),
-                2000,
-                "Could not transform from %s to %s: %s. Displaying tag in camera image only.",
-                input_pose.header.frame_id.c_str(),
-                target_frame_.c_str(),
-                ex.what()
-            );
-
-            return false;
-        }
     }
 
     /**
