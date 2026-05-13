@@ -2,7 +2,9 @@
 
 #include <opencv2/opencv.hpp>
 
+#include <array>
 #include <string>
+
 
 class VisualServoingDisplay
 {
@@ -22,8 +24,8 @@ public:
     void drawDetectedTag(
         cv::Mat &image,
         int tag_id,
-        const double corners[4][2],
-        const double center[2]
+        const std::array<cv::Point2d, 4> &corners,
+        const cv::Point2d &center
     );
 
     void drawSaveButton(

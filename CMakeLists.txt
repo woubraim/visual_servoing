@@ -37,6 +37,7 @@ add_executable(visual_servoing_node
   src/visual_servoing_node.cpp
   src/visual_servoing_display.cpp
   src/camera_config.cpp
+  src/apriltag_pose_estimator.cpp
 )
 
 target_include_directories(visual_servoing_node PUBLIC

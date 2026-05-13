@@ -1,4 +1,20 @@
+/**
+ * @file visual_servoing_display.cpp
+ * @brief Handles all OpenCV visualization for the visual servoing node.
+ *
+ * This class is responsible only for display-related operations:
+ * - creating and destroying the OpenCV window,
+ * - drawing detected AprilTag borders and IDs,
+ * - drawing the SAVE POSE button and its status text,
+ * - displaying the final image.
+ *
+ * It does not contain ROS logic, AprilTag logic, or TF logic.
+ */
+
 #include "visual_servoing/visual_servoing_display.hpp"
+
+#include <array>
+#include <string>
 
 VisualServoingDisplay::VisualServoingDisplay(
     const std::string &window_name,
@@ -23,6 +39,12 @@ VisualServoingDisplay::~VisualServoingDisplay()
     cv::destroyWindow(window_name_);
 }
 
+/**
+ * @brief Registers a mouse callback on the OpenCV window.
+ *
+ * OpenCV requires a C-style callback, so the node passes a static wrapper and
+ * its own pointer through userdata.
+ */
 void VisualServoingDisplay::setMouseCallback(
     void (*callback)(int event, int x, int y, int flags, void *userdata),
     void *userdata
@@ -31,19 +53,33 @@ void VisualServoingDisplay::setMouseCallback(
     cv::setMouseCallback(window_name_, callback, userdata);
 }
 
+
+/**
+ * @brief Draws the border and ID of one detected AprilTag.
+ */
 void VisualServoingDisplay::drawDetectedTag(
     cv::Mat &image,
     int tag_id,
-    const double corners[4][2],
-    const double center[2]
+    const std::array<cv::Point2d, 4> &corners,
+    const cv::Point2d &center
 )
 {
-    for (int j = 0; j < 4; j++)
+    for (int i = 0; i < 4; ++i)
     {
+        const cv::Point p1(
+            static_cast<int>(corners[i].x),
+            static_cast<int>(corners[i].y)
+        );
+
+        const cv::Point p2(
+            static_cast<int>(corners[(i + 1) % 4].x),
+            static_cast<int>(corners[(i + 1) % 4].y)
+        );
+
         cv::line(
             image,
-            cv::Point(corners[j][0], corners[j][1]),
-            cv::Point(corners[(j + 1) % 4][0], corners[(j + 1) % 4][1]),
+            p1,
+            p2,
             cv::Scalar(0, 0, 255),
             2
         );
@@ -52,7 +88,10 @@ void VisualServoingDisplay::drawDetectedTag(
     cv::putText(
         image,
         std::to_string(tag_id),
-        cv::Point(static_cast<int>(center[0]), static_cast<int>(center[1])),
+        cv::Point(
+            static_cast<int>(center.x),
+            static_cast<int>(center.y)
+        ),
         cv::FONT_HERSHEY_SIMPLEX,
         1.0,
         cv::Scalar(0, 255, 0),
@@ -60,6 +99,9 @@ void VisualServoingDisplay::drawDetectedTag(
     );
 }
 
+/**
+ * @brief Draws the SAVE POSE button and the current save status.
+ */
 void VisualServoingDisplay::drawSaveButton(
     cv::Mat &image,
     const cv::Rect &button_rect,
@@ -94,6 +136,9 @@ void VisualServoingDisplay::drawSaveButton(
     );
 }
 
+/**
+ * @brief Displays the current frame and lets OpenCV process UI events.
+ */
 void VisualServoingDisplay::show(cv::Mat &image)
 {
     cv::imshow(window_name_, image);

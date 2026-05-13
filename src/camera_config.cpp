@@ -1,4 +1,13 @@
+/**
+ * @file camera_config.cpp
+ * @brief Provides camera-specific topic configuration for the visual servoing node.
+ *
+ * This file centralizes the mapping between a camera type name and the ROS topics
+ * used by that camera. Keeping this logic outside the main node avoids hardcoding
+ * camera-specific details in the visual servoing pipeline.
+ */
 #include "visual_servoing/camera_config.hpp"
+
 
 
 CameraConfig CameraConfig::fromCameraType(const std::string &camera_type)
