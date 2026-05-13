@@ -26,6 +26,7 @@
 #include "apriltag/apriltag_pose.h"
 #include "apriltag/tag36h11.h"
 
+#include "visual_servoing/camera_config.hpp"
 #include "visual_servoing/visual_servoing_display.hpp"
 
 #include "visual_servoing/msg/detected_goal.hpp"
@@ -80,10 +81,7 @@ private:
     // Runtime configuration loaded from ROS parameters
     // -------------------------------------------------------------------------
     std::string camera_type_;
-    std::string image_topic_;
-    std::string camera_info_topic_;
-    std::string optical_frame_;
-    std::string window_name_;
+    CameraConfig camera_config_;
 
     bool fullscreen_display_ = true;
 
@@ -176,40 +174,24 @@ private:
     // This keeps launch commands short while supporting multiple cameras.
     void configureCameraTopics()
     {
-        if (camera_type_ == "oak")
+        try
         {
-            image_topic_ = "/oak/rgb/image_raw";
-            camera_info_topic_ = "/oak/rgb/camera_info";
-            optical_frame_ = "oak_rgb_camera_optical_frame";
-            window_name_ = "Visual Servoing OAK";
-            return;
+            camera_config_ = CameraConfig::fromCameraType(camera_type_);
         }
-
-        if (camera_type_ == "realsense")
+        catch (const std::exception &e)
         {
-            image_topic_ = "/camera/camera/color/image_raw";
-            camera_info_topic_ = "/camera/camera/color/camera_info";
-            optical_frame_ = "camera_color_optical_frame";
-            window_name_ = "Visual Servoing Realsense";
-            return;
+            RCLCPP_FATAL(this->get_logger(), "%s", e.what());
+            throw;
         }
-
-        RCLCPP_FATAL(
-            this->get_logger(),
-            "Unknown camera_type: '%s'. Use 'oak' or 'realsense'.",
-            camera_type_.c_str()
-        );
-
-        throw std::runtime_error("Invalid camera_type");
     }
 
     // Print the final configuration at startup.
     void logConfiguration()
     {
-        RCLCPP_INFO(this->get_logger(), "Using camera_type: %s", camera_type_.c_str());
-        RCLCPP_INFO(this->get_logger(), "Image topic: %s", image_topic_.c_str());
-        RCLCPP_INFO(this->get_logger(), "Camera info topic: %s", camera_info_topic_.c_str());
-        RCLCPP_INFO(this->get_logger(), "Optical frame: %s", optical_frame_.c_str());
+        RCLCPP_INFO(this->get_logger(), "Using camera_type: %s", camera_config_.camera_type.c_str());
+        RCLCPP_INFO(this->get_logger(), "Image topic: %s", camera_config_.image_topic.c_str());
+        RCLCPP_INFO(this->get_logger(), "Camera info topic: %s", camera_config_.camera_info_topic.c_str());
+        RCLCPP_INFO(this->get_logger(), "Optical frame: %s", camera_config_.optical_frame.c_str());
         RCLCPP_INFO(this->get_logger(), "Target frame: %s", target_frame_.c_str());
         RCLCPP_INFO(this->get_logger(), "Tag size: %.3f m", tag_size_);
     }
@@ -224,13 +206,13 @@ private:
             );
 
         image_sub_ = this->create_subscription<sensor_msgs::msg::Image>(
-            image_topic_,
+            camera_config_.image_topic,
             10,
             std::bind(&VisualServoingNode::imageCallback, this, std::placeholders::_1)
         );
 
         camera_info_sub_ = this->create_subscription<sensor_msgs::msg::CameraInfo>(
-            camera_info_topic_,
+            camera_config_.camera_info_topic,
             10,
             std::bind(&VisualServoingNode::cameraInfoCallback, this, std::placeholders::_1)
         );
@@ -246,7 +228,7 @@ private:
     void initializeDisplay()
     {
         display_ = std::make_unique<VisualServoingDisplay>(
-            window_name_,
+            camera_config_.window_name,
             fullscreen_display_
         );
 
