@@ -31,7 +31,6 @@
 #include <tf2_ros/transform_listener.h>
 
 #include <memory>
-#include <mutex>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -41,9 +40,9 @@
 #include "visual_servoing/visual_servoing_display.hpp"
 #include "visual_servoing/pose_transformer.hpp"
 #include "visual_servoing/detected_goal_builder.hpp"
+#include "visual_servoing/pose_save_client.hpp"
 
 #include "visual_servoing/msg/detected_goal_array.hpp"
-#include "visual_servoing/srv/save_current_tag_goal.hpp"
 
 
 /**
@@ -71,12 +70,13 @@ public:
      * the estimator needs the configured tag size.
      */
     VisualServoingNode()
-    : Node("visual_servoing_node")
+        : Node("visual_servoing_node")
     {
         loadParameters();
         initializeAprilTagEstimator();
         initializeTf();
         initializePoseTransformer();
+        initializePoseSaveClient();
         configureCamera();
         logConfiguration();
         initializeRosInterfaces();
@@ -122,9 +122,6 @@ private:
     /// Publisher for detected tag goals.
     rclcpp::Publisher<visual_servoing::msg::DetectedGoalArray>::SharedPtr detected_goals_pub_;
 
-    /// Client used by the SAVE POSE button.
-    rclcpp::Client<visual_servoing::srv::SaveCurrentTagGoal>::SharedPtr save_pose_client_;
-
     // -------------------------------------------------------------------------
     // Processing helpers
     // -------------------------------------------------------------------------
@@ -137,6 +134,9 @@ private:
 
     /// Handles OpenCV drawing and window management.
     std::unique_ptr<VisualServoingDisplay> display_;
+
+    /// Handles visible-tag tracking and SAVE POSE service calls.
+    std::unique_ptr<PoseSaveClient> pose_save_client_;
 
     // -------------------------------------------------------------------------
     // Camera calibration
@@ -154,21 +154,6 @@ private:
     /// Principal point y coordinate.
     double cy_ = 0.0;
 
-    // -------------------------------------------------------------------------
-    // SAVE POSE UI state
-    // -------------------------------------------------------------------------
-
-    /// Rectangle defining the clickable SAVE POSE button area in the image.
-    cv::Rect save_button_rect_{10, 10, 180, 40};
-
-    /// Status text displayed under the SAVE POSE button.
-    std::string save_status_ = "Ready";
-
-    /// IDs of tags detected in the latest processed frame.
-    std::vector<int> visible_tag_ids_;
-
-    /// Protects visible_tag_ids_, which can be read from the mouse callback.
-    std::mutex visible_tags_mutex_;
 
     // -------------------------------------------------------------------------
     // Initialization
@@ -217,6 +202,17 @@ private:
             this->get_logger(),
             this->get_clock(),
             target_frame_
+        );
+    }
+
+    /**
+    * @brief Creates the helper responsible for SAVE POSE service calls.
+    */
+    void initializePoseSaveClient()
+    {
+        pose_save_client_ = std::make_unique<PoseSaveClient>(
+            this,
+            "/visual_servoing/save_current_tag_goal"
         );
     }
 
@@ -304,10 +300,6 @@ private:
             std::bind(&VisualServoingNode::cameraInfoCallback, this, std::placeholders::_1)
         );
 
-        save_pose_client_ =
-            this->create_client<visual_servoing::srv::SaveCurrentTagGoal>(
-                "/visual_servoing/save_current_tag_goal"
-            );
     }
 
     /**
@@ -356,120 +348,9 @@ private:
             return;
         }
 
-        if (save_button_rect_.contains(cv::Point(x, y)))
+        if (display_->isSaveButtonClicked(x, y))
         {
-            triggerSave();
-        }
-    }
-
-    /**
-     * @brief Requests saving the first currently visible tag pose.
-     *
-     * The actual save implementation is delegated to the
-     * /visual_servoing/save_current_tag_goal service.
-     */
-    void triggerSave()
-    {
-        if (!save_pose_client_ || !save_pose_client_->service_is_ready())
-        {
-            save_status_ = "Service not ready";
-
-            RCLCPP_WARN(
-                this->get_logger(),
-                "Service /visual_servoing/save_current_tag_goal not ready"
-            );
-
-            return;
-        }
-
-        const int tag_id = getFirstVisibleTagId();
-
-        if (tag_id < 0)
-        {
-            save_status_ = "No visible tag";
-            RCLCPP_WARN(this->get_logger(), "No visible tag to save");
-            return;
-        }
-
-        auto request =
-            std::make_shared<visual_servoing::srv::SaveCurrentTagGoal::Request>();
-
-        request->tag_id = tag_id;
-        request->label = "pose";
-
-        save_status_ = "Saving tag " + std::to_string(tag_id);
-
-        save_pose_client_->async_send_request(
-            request,
-            [this, tag_id](
-                rclcpp::Client<visual_servoing::srv::SaveCurrentTagGoal>::SharedFuture future
-            )
-            {
-                handleSaveResponse(tag_id, future);
-            }
-        );
-    }
-
-    /**
-     * @brief Returns the first visible tag ID from the latest frame.
-     *
-     * @return Tag ID if a tag is visible, otherwise -1.
-     */
-    int getFirstVisibleTagId()
-    {
-        std::lock_guard<std::mutex> lock(visible_tags_mutex_);
-
-        if (visible_tag_ids_.empty())
-        {
-            return -1;
-        }
-
-        return visible_tag_ids_.front();
-    }
-
-    /**
-     * @brief Handles the asynchronous response from the save pose service.
-     */
-    void handleSaveResponse(
-        int tag_id,
-        rclcpp::Client<visual_servoing::srv::SaveCurrentTagGoal>::SharedFuture future
-    )
-    {
-        try
-        {
-            const auto response = future.get();
-
-            if (response->success)
-            {
-                save_status_ = "Saved tag " + std::to_string(tag_id);
-
-                RCLCPP_INFO(
-                    this->get_logger(),
-                    "Saved pose for tag %d",
-                    tag_id
-                );
-
-                return;
-            }
-
-            save_status_ = "Save failed";
-
-            RCLCPP_WARN(
-                this->get_logger(),
-                "Save failed for tag %d: %s",
-                tag_id,
-                response->message.c_str()
-            );
-        }
-        catch (const std::exception &e)
-        {
-            save_status_ = "Service error";
-
-            RCLCPP_ERROR(
-                this->get_logger(),
-                "Service exception: %s",
-                e.what()
-            );
+            pose_save_client_->triggerSave();
         }
     }
 
@@ -531,7 +412,7 @@ private:
             cy_
         );
 
-        resetVisibleTags();
+        pose_save_client_->resetVisibleTags();
 
         auto detected_goals_msg = DetectedGoalBuilder::createMessage(
             this->now(),
@@ -548,7 +429,10 @@ private:
 
         detected_goals_pub_->publish(detected_goals_msg);
 
-        display_->drawSaveButton(color, save_button_rect_, save_status_);
+        display_->drawSaveButton(
+            color,
+            pose_save_client_->status()
+        );
         display_->show(color);
     }
 
@@ -648,7 +532,7 @@ private:
                 target_frame_
             );
 
-            addVisibleTag(detected_tag.id);
+            pose_save_client_->addVisibleTag(detected_tag.id);
             return;
         }
 
@@ -659,26 +543,9 @@ private:
             image_frame_id
         );
 
-        addVisibleTag(detected_tag.id);
+        pose_save_client_->addVisibleTag(detected_tag.id);
     }
 
-    /**
-     * @brief Clears the list of tags visible in the current frame.
-     */
-    void resetVisibleTags()
-    {
-        std::lock_guard<std::mutex> lock(visible_tags_mutex_);
-        visible_tag_ids_.clear();
-    }
-
-    /**
-     * @brief Registers one tag as visible in the current frame.
-     */
-    void addVisibleTag(int tag_id)
-    {
-        std::lock_guard<std::mutex> lock(visible_tags_mutex_);
-        visible_tag_ids_.push_back(tag_id);
-    }
 };
 
 

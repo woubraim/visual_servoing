@@ -30,12 +30,14 @@ public:
 
     void drawSaveButton(
         cv::Mat &image,
-        const cv::Rect &button_rect,
         const std::string &save_status
     );
 
     void show(cv::Mat &image);
 
+    bool isSaveButtonClicked(int x, int y) const;
+
 private:
     std::string window_name_;
+    cv::Rect save_button_rect_{10, 10, 180, 40};
 };

@@ -104,13 +104,12 @@ void VisualServoingDisplay::drawDetectedTag(
  */
 void VisualServoingDisplay::drawSaveButton(
     cv::Mat &image,
-    const cv::Rect &button_rect,
     const std::string &save_status
 )
 {
     cv::rectangle(
         image,
-        button_rect,
+        save_button_rect_,
         cv::Scalar(255, 0, 0),
         cv::FILLED
     );
@@ -118,7 +117,7 @@ void VisualServoingDisplay::drawSaveButton(
     cv::putText(
         image,
         "SAVE POSE",
-        cv::Point(button_rect.x + 15, button_rect.y + 27),
+        cv::Point(save_button_rect_.x + 15, save_button_rect_.y + 27),
         cv::FONT_HERSHEY_SIMPLEX,
         0.7,
         cv::Scalar(255, 255, 255),
@@ -143,4 +142,11 @@ void VisualServoingDisplay::show(cv::Mat &image)
 {
     cv::imshow(window_name_, image);
     cv::waitKey(1);
+}
+/**
+ * @brief Checks if the SAVE POSE button was clicked.
+ */
+bool VisualServoingDisplay::isSaveButtonClicked(int x, int y) const
+{
+    return save_button_rect_.contains(cv::Point(x, y));
 }
