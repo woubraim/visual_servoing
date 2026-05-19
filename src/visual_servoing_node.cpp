@@ -123,7 +123,7 @@ private:
     rclcpp::Publisher<visual_servoing::msg::DetectedGoalArray>::SharedPtr detected_goals_pub_;
 
     /// Publisher for raw AprilTag pose in camera frame.
-    rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr tag_pose_camera_pub_;
+    rclcpp::Publisher<visual_servoing::msg::DetectedGoalArray>::SharedPtr tag_pose_camera_pub_;
 
     // -------------------------------------------------------------------------
     // Processing helpers
@@ -291,7 +291,7 @@ private:
                 10
             );
         tag_pose_camera_pub_ =
-            this->create_publisher<geometry_msgs::msg::PoseStamped>(
+            this->create_publisher<visual_servoing::msg::DetectedGoalArray>(
                 "/visual_servoing/tag_pose_camera",
                 10
             );
@@ -427,15 +427,22 @@ private:
             target_frame_
         );
 
+        auto tag_pose_camera_msg = DetectedGoalBuilder::createMessage(
+            this->now(),
+            msg->header.frame_id
+        );
+
         processDetections(
             detected_tags,
             msg->header.stamp,
             msg->header.frame_id,
             color,
-            detected_goals_msg
+            detected_goals_msg,
+            tag_pose_camera_msg
         );
 
         detected_goals_pub_->publish(detected_goals_msg);
+        tag_pose_camera_pub_->publish(tag_pose_camera_msg);
 
         display_->drawSaveButton(
             color,
@@ -487,7 +494,8 @@ private:
         const rclcpp::Time &image_stamp,
         const std::string &image_frame_id,
         cv::Mat &color,
-        visual_servoing::msg::DetectedGoalArray &detected_goals_msg
+        visual_servoing::msg::DetectedGoalArray &detected_goals_msg,
+        visual_servoing::msg::DetectedGoalArray &tag_pose_camera_msg
     )
     {
         for (const auto &detected_tag : detected_tags)
@@ -497,7 +505,8 @@ private:
                 image_stamp,
                 image_frame_id,
                 color,
-                detected_goals_msg
+                detected_goals_msg,
+                tag_pose_camera_msg
             );
         }
     }
@@ -514,7 +523,8 @@ private:
         const rclcpp::Time &image_stamp,
         const std::string &image_frame_id,
         cv::Mat &color,
-        visual_servoing::msg::DetectedGoalArray &detected_goals_msg
+        visual_servoing::msg::DetectedGoalArray &detected_goals_msg,
+        visual_servoing::msg::DetectedGoalArray &tag_pose_camera_msg
     )
     {
         geometry_msgs::msg::PoseStamped tag_pose_camera_stamped;
@@ -522,9 +532,14 @@ private:
         tag_pose_camera_stamped.header.frame_id = image_frame_id;
         tag_pose_camera_stamped.pose = detected_tag.pose_camera;
 
-        // Raw camera-frame tag pose for hand-eye calibration.
+        // Store raw camera-frame tag pose for hand-eye calibration.
         // This is C_T_T: tag pose expressed in the camera frame.
-        tag_pose_camera_pub_->publish(tag_pose_camera_stamped);
+        DetectedGoalBuilder::addGoal(
+            tag_pose_camera_msg,
+            detected_tag.id,
+            detected_tag.pose_camera,
+            image_frame_id
+        );
 
         display_->drawDetectedTag(
             color,
