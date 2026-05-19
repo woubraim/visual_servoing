@@ -122,6 +122,9 @@ private:
     /// Publisher for detected tag goals.
     rclcpp::Publisher<visual_servoing::msg::DetectedGoalArray>::SharedPtr detected_goals_pub_;
 
+    /// Publisher for raw AprilTag pose in camera frame.
+    rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr tag_pose_camera_pub_;
+
     // -------------------------------------------------------------------------
     // Processing helpers
     // -------------------------------------------------------------------------
@@ -285,6 +288,11 @@ private:
         detected_goals_pub_ =
             this->create_publisher<visual_servoing::msg::DetectedGoalArray>(
                 "/visual_servoing/detected_goals",
+                10
+            );
+        tag_pose_camera_pub_ =
+            this->create_publisher<geometry_msgs::msg::PoseStamped>(
+                "/visual_servoing/tag_pose_camera",
                 10
             );
 
@@ -514,6 +522,10 @@ private:
         tag_pose_camera_stamped.header.frame_id = image_frame_id;
         tag_pose_camera_stamped.pose = detected_tag.pose_camera;
 
+        // Raw camera-frame tag pose for hand-eye calibration.
+        // This is C_T_T: tag pose expressed in the camera frame.
+        tag_pose_camera_pub_->publish(tag_pose_camera_stamped);
+
         display_->drawDetectedTag(
             color,
             detected_tag.id,
@@ -533,17 +545,7 @@ private:
             );
 
             pose_save_client_->addVisibleTag(detected_tag.id);
-            return;
         }
-
-        DetectedGoalBuilder::addGoal(
-            detected_goals_msg,
-            detected_tag.id,
-            detected_tag.pose_camera,
-            image_frame_id
-        );
-
-        pose_save_client_->addVisibleTag(detected_tag.id);
     }
 
 };
