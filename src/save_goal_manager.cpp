@@ -1,5 +1,5 @@
 /**
- * @file save_goal_managercpp
+ * @file save_goal_manager.cpp
  * @brief SAVE POSE service server and YAML persistence for visual-servoing goals.
  *
  * Responsibilities:
@@ -67,7 +67,7 @@ private:
 
     std::string detected_goals_topic_ = "/visual_servoing/detected_goals";
     std::string save_service_name_ = "/visual_servoing/save_current_tag_goal";
-    std::string yaml_path_ = "/home/woubraim/extender_ws/visual_servoing_ws/saved_tag_goals.yaml";
+    std::string yaml_path_ = "saved_tag_goals.yaml";
     std::string base_frame_ = "base_link";
     std::string ee_frame_ = "tool0";
     double tf_timeout_sec_ = 0.2;

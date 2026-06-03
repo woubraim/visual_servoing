@@ -1,0 +1,36 @@
+- tag_id: 4
+  label: "pose"
+  frame: "tag_4"
+  saved_transform: "tag_T_ee"
+  position: [-0.0197564, -0.207684, -0.545959]
+  orientation_wxyz: [-0.303348, 0.346196, 0.672238, 0.579849]
+- tag_id: 4
+  label: "pose"
+  frame: "tag_4"
+  saved_transform: "tag_T_ee"
+  position: [-0.0197564, -0.207684, -0.545959]
+  orientation_wxyz: [-0.303348, 0.346196, 0.672238, 0.579849]
+- tag_id: 4
+  label: "pose"
+  frame: "tag_4"
+  saved_transform: "tag_T_ee"
+  position: [-0.0119208, 0.131507, -0.569104]
+  orientation_wxyz: [-0.386947, 0.238411, 0.476775, 0.752408]
+- tag_id: 4
+  label: "pose"
+  frame: "tag_4"
+  saved_transform: "tag_T_ee"
+  position: [-0.0119208, 0.131507, -0.569104]
+  orientation_wxyz: [-0.386947, 0.238411, 0.476775, 0.752408]
+- tag_id: 4
+  label: "pose"
+  frame: "tag_4"
+  saved_transform: "tag_T_ee"
+  position: [-0.0112659, 0.131083, -0.5694]
+  orientation_wxyz: [-0.386584, 0.238141, 0.477314, 0.752338]
+- tag_id: 4
+  label: "pose"
+  frame: "tag_4"
+  saved_transform: "tag_T_ee"
+  position: [-0.0112659, 0.131083, -0.5694]
+  orientation_wxyz: [-0.386584, 0.238141, 0.477314, 0.752338]

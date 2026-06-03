@@ -155,6 +155,7 @@ install(TARGETS
 
 install(DIRECTORY
   launch
+  yaml
   DESTINATION share/${PROJECT_NAME}
 )
 

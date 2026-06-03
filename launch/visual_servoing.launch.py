@@ -1,8 +1,17 @@
+import os
+
+from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch_ros.actions import Node
 
 
+
 def generate_launch_description():
+    visual_servoing_share = get_package_share_directory("visual_servoing")
+    yaml_dir = os.path.join(visual_servoing_share, "yaml")
+
+    handeye_yaml_path = os.path.join(yaml_dir, "handeye_tf.yaml")
+    saved_goals_yaml_path = os.path.join(yaml_dir, "saved_tag_goals.yaml")
     handeye_tf_publisher = Node(
         package="visual_servoing",
         executable="handeye_tf_publisher",
@@ -10,8 +19,8 @@ def generate_launch_description():
         output="screen",
         parameters=[
             {
-                "yaml_path": "/home/woubraim/extender_ws/visual_servoing_ws/E_T_C.yaml",
-                "ee_frame": "tool0",
+                "yaml_path": handeye_yaml_path,
+                "ee_frame": "camera_explorer",
                 "camera_frame": "oak_parent_frame",
             }
         ],
@@ -43,7 +52,7 @@ def generate_launch_description():
                 "save_service_name": "/visual_servoing/save_current_tag_goal",
                 "base_frame": "base_link",
                 "ee_frame": "tool0",
-                "yaml_path": "/home/woubraim/extender_ws/visual_servoing_ws/saved_tag_goals.yaml",
+                "yaml_path": saved_goals_yaml_path,
             }
         ],
     )
