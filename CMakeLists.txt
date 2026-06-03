@@ -23,6 +23,8 @@ find_package(tf2_geometry_msgs REQUIRED)
 find_package(cv_bridge REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(Eigen3 REQUIRED)
+find_package(std_srvs REQUIRED)
+find_package(visualization_msgs REQUIRED)
 
 find_package(rosidl_default_generators REQUIRED)
 
@@ -43,6 +45,18 @@ add_executable(visual_servoing_node
   src/pose_save_client.cpp
 )
 
+add_executable(handeye_tf_publisher
+  src/handeye_tf_publisher.cpp
+)
+
+add_executable(shared_control_visualization_node
+  src/shared_control_visualization_node.cpp
+)
+
+add_executable(save_goal_manager
+  src/save_goal_manager.cpp
+)
+
 target_include_directories(visual_servoing_node PUBLIC
   include
   third_party
@@ -53,13 +67,11 @@ target_include_directories(visual_servoing_node PUBLIC
   ${EIGEN3_INCLUDE_DIRS}
 )
 
-set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
-
-include_directories(${EIGEN3_INCLUDE_DIR})
-include_directories(/usr/local/include)
-link_directories(/usr/local/lib)
+target_include_directories(save_goal_manager PUBLIC
+  include
+  ${CMAKE_CURRENT_BINARY_DIR}/rosidl_generator_cpp
+  ${EIGEN3_INCLUDE_DIRS}
+)
 
 ament_target_dependencies(visual_servoing_node
   rclcpp
@@ -72,6 +84,27 @@ ament_target_dependencies(visual_servoing_node
   cv_bridge
 )
 
+ament_target_dependencies(handeye_tf_publisher
+  rclcpp
+  geometry_msgs
+  tf2
+  tf2_ros
+)
+
+ament_target_dependencies(shared_control_visualization_node
+  rclcpp
+  std_msgs
+  geometry_msgs
+  visualization_msgs
+)
+
+ament_target_dependencies(save_goal_manager
+  rclcpp
+  geometry_msgs
+  tf2
+  tf2_ros
+)
+
 rosidl_get_typesupport_target(cpp_typesupport_target
   ${PROJECT_NAME}
   rosidl_typesupport_cpp
@@ -82,13 +115,47 @@ target_link_libraries(visual_servoing_node
   ${OpenCV_LIBRARIES}
   ${cpp_typesupport_target}
 )
+
+target_link_libraries(handeye_tf_publisher
+  ${OpenCV_LIBRARIES}
+)
+
+target_include_directories(shared_control_visualization_node PUBLIC
+  include
+  ${CMAKE_CURRENT_BINARY_DIR}/rosidl_generator_cpp
+)
+
+target_link_libraries(shared_control_visualization_node
+  ${cpp_typesupport_target}
+)
+
+target_link_libraries(save_goal_manager
+  ${cpp_typesupport_target}
+)
+
+add_dependencies(shared_control_visualization_node
+  ${PROJECT_NAME}__rosidl_generator_cpp
+)
+
 add_dependencies(visual_servoing_node
+  ${PROJECT_NAME}__rosidl_generator_cpp
+)
+
+add_dependencies(save_goal_manager
   ${PROJECT_NAME}__rosidl_generator_cpp
 )
 
 install(TARGETS
   visual_servoing_node
+  handeye_tf_publisher
+  shared_control_visualization_node
+  save_goal_manager
   DESTINATION lib/${PROJECT_NAME}
+)
+
+install(DIRECTORY
+  launch
+  DESTINATION share/${PROJECT_NAME}
 )
 
 ament_export_dependencies(rosidl_default_runtime)

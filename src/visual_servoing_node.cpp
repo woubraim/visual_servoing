@@ -6,8 +6,8 @@
  * - receives camera images and camera calibration,
  * - detects AprilTags and estimates their 3D poses,
  * - transforms tag poses into a target robot frame when TF is available,
- * - falls back to camera-frame poses when TF is missing,
- * - publishes detected goals,
+ * - publishes raw camera-frame tag poses for calibration,
+ * - publishes target-frame detected goals when TF is available,
  * - displays an annotated OpenCV camera view,
  * - allows saving the currently visible tag pose through a ROS service.
  *
@@ -43,6 +43,9 @@
 #include "visual_servoing/pose_save_client.hpp"
 
 #include "visual_servoing/msg/detected_goal_array.hpp"
+
+#include <tf2_ros/transform_broadcaster.h>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 
 
 /**
@@ -125,6 +128,8 @@ private:
     /// Publisher for raw AprilTag pose in camera frame.
     rclcpp::Publisher<visual_servoing::msg::DetectedGoalArray>::SharedPtr tag_pose_camera_pub_;
 
+    std::unique_ptr<tf2_ros::TransformBroadcaster> tag_tf_broadcaster_;
+
     // -------------------------------------------------------------------------
     // Processing helpers
     // -------------------------------------------------------------------------
@@ -193,6 +198,7 @@ private:
     {
         tf_buffer_ = std::make_shared<tf2_ros::Buffer>(this->get_clock());
         tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
+        tag_tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
     }
 
     /**
@@ -422,13 +428,15 @@ private:
 
         pose_save_client_->resetVisibleTags();
 
+        const rclcpp::Time image_time(msg->header.stamp);
+
         auto detected_goals_msg = DetectedGoalBuilder::createMessage(
-            this->now(),
+            image_time,
             target_frame_
         );
 
         auto tag_pose_camera_msg = DetectedGoalBuilder::createMessage(
-            this->now(),
+            image_time,
             msg->header.frame_id
         );
 
@@ -512,12 +520,11 @@ private:
     }
 
     /**
-     * @brief Processes one detected AprilTag.
-     *
-     * The tag is always drawn in the image. Its pose is published in target_frame_
-     * when the TF transform is available. Otherwise, the camera-frame pose is
-     * published so the vision pipeline remains testable without the robot TF tree.
-     */
+    * @brief Processes one detected AprilTag.
+    *
+    * The raw camera-frame pose is always published on /visual_servoing/tag_pose_camera.
+    * If TF is available, the pose is also published in target_frame_.
+    */
     void processSingleDetection(
         const DetectedTagPose &detected_tag,
         const rclcpp::Time &image_stamp,
@@ -531,6 +538,20 @@ private:
         tag_pose_camera_stamped.header.stamp = image_stamp;
         tag_pose_camera_stamped.header.frame_id = image_frame_id;
         tag_pose_camera_stamped.pose = detected_tag.pose_camera;
+
+
+        geometry_msgs::msg::TransformStamped tag_tf;
+
+        tag_tf.header.stamp = image_stamp;
+        tag_tf.header.frame_id = image_frame_id;
+        tag_tf.child_frame_id = "tag_" + std::to_string(detected_tag.id);
+
+        tag_tf.transform.translation.x = detected_tag.pose_camera.position.x;
+        tag_tf.transform.translation.y = detected_tag.pose_camera.position.y;
+        tag_tf.transform.translation.z = detected_tag.pose_camera.position.z;
+        tag_tf.transform.rotation = detected_tag.pose_camera.orientation;
+
+        tag_tf_broadcaster_->sendTransform(tag_tf);
 
         // Store raw camera-frame tag pose for hand-eye calibration.
         // This is C_T_T: tag pose expressed in the camera frame.
