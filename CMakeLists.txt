@@ -32,6 +32,8 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/DetectedGoal.msg"
   "msg/DetectedGoalArray.msg"
   "srv/SaveCurrentTagGoal.srv"
+  "msg/SharedControlGoalDebug.msg"
+  "msg/SharedControlDebug.msg"
   DEPENDENCIES std_msgs geometry_msgs
 )
 
