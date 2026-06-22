@@ -1,0 +1,6 @@
+- tag_id: 4
+  label: "pose"
+  frame: "tag_4"
+  saved_transform: "tag_T_ee"
+  position: [-0.0638332, 0.0488851, -0.0646926]
+  orientation_wxyz: [0.692342, 0.279832, 0.136053, 0.651035]

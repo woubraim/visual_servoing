@@ -12,7 +12,7 @@ def generate_launch_description():
 
     handeye_yaml_path = os.path.join(yaml_dir, "handeye_tf.yaml")
     #saved_goals_yaml_path = os.path.join(yaml_dir, "saved_tag_goals.yaml")
-    saved_goals_yaml_path = "/home/woubraim/extender_ws/visual_servoing_ws/src/visual_servoing/yaml/saved_tag_goals.yaml"
+    saved_goals_yaml_path = "/home/woubraim/extender_ws/src/visual_servoing/yaml/saved_tag_goals.yaml"
     handeye_tf_publisher = Node(
         package="visual_servoing",
         executable="handeye_tf_publisher",
@@ -52,7 +52,7 @@ def generate_launch_description():
                 "detected_goals_topic": "/visual_servoing/detected_goals",
                 "save_service_name": "/visual_servoing/save_current_tag_goal",
                 "base_frame": "base_link",
-                "ee_frame": "tool0",
+                "ee_frame": "ft_frame",
                 "yaml_path": saved_goals_yaml_path,
             }
         ],

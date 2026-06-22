@@ -54,7 +54,7 @@ public:
     HandEyeTfPublisher()
         : Node("handeye_tf_publisher")
     {
-        declare_parameter<std::string>("yaml_path", "/home/woubraim/extender_ws/visual_servoing_ws/src/visual_servoing/yaml/handeye_tf.yaml");
+        declare_parameter<std::string>("yaml_path", "/home/woubraim/extender_ws/src/visual_servoing/yaml/handeye_tf.yaml");
 
         const std::string yaml_path =
             get_parameter("yaml_path").as_string();

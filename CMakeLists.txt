@@ -25,6 +25,9 @@ find_package(OpenCV REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(std_srvs REQUIRED)
 find_package(visualization_msgs REQUIRED)
+find_package(extender_msgs REQUIRED)
+find_package(yaml-cpp REQUIRED)
+
 
 find_package(rosidl_default_generators REQUIRED)
 
@@ -73,6 +76,7 @@ target_include_directories(save_goal_manager PUBLIC
   include
   ${CMAKE_CURRENT_BINARY_DIR}/rosidl_generator_cpp
   ${EIGEN3_INCLUDE_DIRS}
+  ${OpenCV_INCLUDE_DIRS}
 )
 
 ament_target_dependencies(visual_servoing_node
@@ -105,6 +109,7 @@ ament_target_dependencies(save_goal_manager
   geometry_msgs
   tf2
   tf2_ros
+  extender_msgs
 )
 
 rosidl_get_typesupport_target(cpp_typesupport_target
@@ -133,6 +138,8 @@ target_link_libraries(shared_control_visualization_node
 
 target_link_libraries(save_goal_manager
   ${cpp_typesupport_target}
+  ${OpenCV_LIBRARIES}
+  yaml-cpp
 )
 
 add_dependencies(shared_control_visualization_node

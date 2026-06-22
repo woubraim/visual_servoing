@@ -25,6 +25,8 @@
   <depend>cv_bridge</depend>
   <depend>opencv2</depend>
   <depend>eigen</depend>
+  <depend>extender_msgs</depend>
+  <depend>yaml-cpp</depend>
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>
